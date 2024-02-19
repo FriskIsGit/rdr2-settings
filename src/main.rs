@@ -11,26 +11,34 @@ const RIGHT: char = 'd';
 const CARRIAGE_RETURN: char = '\r';
 const LINE_BREAK: char = '\n';
 
-const BASE_VRAM: usize = 1024;
-const ALL_VRAM: usize = 2048;
+const MIN_VRAM: usize = 1537;  // All minimal settings (1024 x 768)
+const RECOMMENDED_VRAM: usize = 6144;
 const PADDING: usize = 40;
 
 fn main() {
     println!("Running!");
-    start_console();
+    let args: Vec<String> = std::env::args().collect();
+    let mut vram_available = RECOMMENDED_VRAM;
+    if args.len() > 0 {
+        // VRAM provided in GB
+        if let Ok(gb) = args[0].parse::<usize>() {
+            vram_available = gb * 1024;
+        }
+    }
+    start_console(vram_available);
 }
 
-fn start_console() {
+fn start_console(vram_available_mbs: usize) {
     let mut settings = settings::get_settings();
     let capacity = settings_string_capacity(&settings);
     let g = Getch::new();
     let mut index = 0;
     let mut cycle_settings = true;
 
-    let mut vram_used = BASE_VRAM;
+    let mut vram_used = MIN_VRAM as f64;
     while cycle_settings {
         let mut format = String::with_capacity(capacity);
-        format.push_str(&format!("==== VRAM USAGE {vram_used} / {ALL_VRAM} ====\n"));
+        format.push_str(&format!("==== VRAM USAGE {vram_used} / {vram_available_mbs} ====\n"));
 
         for (i, setting) in settings.iter().enumerate() {
             if i == index {
@@ -72,7 +80,7 @@ fn start_console() {
                             SettingType::Level(selected_index, _, vram_levels) => {
                                 if *selected_index > 0 {
                                     *selected_index -= 1;
-                                    vram_used -= vram_levels[*selected_index];
+                                    vram_used -= vram_levels[*selected_index] as f64;
                                 }
                             }
                             SettingType::OnOff(enabled) => {
@@ -103,7 +111,7 @@ fn start_console() {
                             SettingType::Level(selected_index, selectable, vram_levels) => {
                                 if *selected_index + 1 < selectable.len() {
                                     *selected_index += 1;
-                                    vram_used += vram_levels[*selected_index - 1];
+                                    vram_used += vram_levels[*selected_index - 1] as f64;
                                 }
                             }
                             SettingType::OnOff(enabled) => {

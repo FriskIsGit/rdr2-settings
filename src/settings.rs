@@ -40,7 +40,7 @@ impl Setting {
         Self {
             nice_name: nice_name.into(),
             tag: tag.into(),
-            setting_type: SettingType::Level(1, options, vram),
+            setting_type: SettingType::Level(0, options, vram),
             section,
         }
     }
@@ -54,7 +54,7 @@ impl Setting {
         Self {
             nice_name: nice_name.into(),
             tag: tag.into(),
-            setting_type: SettingType::Level(1, options, vram),
+            setting_type: SettingType::Level(0, options, vram),
             section,
         }
     }
@@ -87,7 +87,7 @@ impl Setting {
         Self {
             nice_name: nice_name.into(),
             tag: tag.into(),
-            setting_type: SettingType::Level(2, options, vram),
+            setting_type: SettingType::Level(0, options, vram),
             section,
         }
     }
@@ -123,7 +123,7 @@ impl Setting {
         Self {
             nice_name: nice_name.into(),
             tag: tag.into(),
-            setting_type: SettingType::Level(1, options, vram),
+            setting_type: SettingType::Level(0, options, vram),
             section,
         }
     }
