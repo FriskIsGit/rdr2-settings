@@ -10,7 +10,7 @@ pub enum KeyCode {
 }
 
 #[cfg(target_os = "windows")]
-pub mod windows {
+pub(crate) mod windows {
     use super::KeyCode;
 
     #[allow(non_camel_case_types)]
@@ -98,22 +98,30 @@ pub mod windows {
             let new_mode = prev_mode & !(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
             SetConsoleMode(handle, new_mode);
 
-            let mut read = 0u32;
+            let mut entries_read = 0u32;
             let mut input = InputRecord::default();
-            while input.event_type != 1 {
-                let result = ReadConsoleInputA(handle, &mut input as *mut InputRecord, 1, &mut read as *mut u32);
+            loop {
+                let result = ReadConsoleInputA(handle, &mut input as *mut InputRecord, 1, &mut entries_read as *mut u32);
 
                 // Reading the console input failed.
-                if result == 0 {
+                if result == 0 || entries_read != 1 {
+                    SetConsoleMode(handle, prev_mode);
                     return KeyCode::Other
                 }
+
+                if input.event_type != 1 {
+                    continue;
+                }
+
+                let key = input.event.key;
+                if key.key_down == 0 {
+                    continue;
+                }
+
+                break;
             }
 
             SetConsoleMode(handle, prev_mode);
-
-            if read != 1 {
-                return KeyCode::Other
-            }
 
             let key = input.event.key;
 
@@ -130,14 +138,14 @@ pub mod windows {
                 0x28 => return KeyCode::ArrowDown,
                 _    => return KeyCode::Other,
             }
-
-            unreachable!()
         }
     }
 }
 
+
+
 #[cfg(all(unix))]
-pub mod unix {
+pub(crate) mod unix {
     use super::KeyCode;
 
     const STDIN_FILENO: i32 = 0;

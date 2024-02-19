@@ -1,4 +1,4 @@
-use std::io::{stdout, Write};
+use std::io::{Write};
 use crate::inputs::KeyCode;
 use crate::settings::{Setting, SettingType};
 
@@ -24,7 +24,6 @@ const PADDING: usize = 40;
 
 fn main() {
     println!("Running!");
-
     let args: Vec<String> = std::env::args().collect();
     let mut vram_available = RECOMMENDED_VRAM;
     if args.len() > 0 {
@@ -37,11 +36,6 @@ fn main() {
 }
 
 fn start_console(vram_available_mbs: usize) {
-    /*let Ok(_) = crossterm::terminal::enable_raw_mode() else {
-        eprintln!("Failed to enable raw mode");
-        return;
-    };*/
-
     let mut settings = settings::get_settings();
     let capacity = settings_string_capacity(&settings);
     let mut index = 0;
@@ -62,6 +56,7 @@ fn start_console(vram_available_mbs: usize) {
             pad_with_spaces(&mut format, PADDING - nice_name_length);
             append_setting_type(&mut format, &setting.setting_type);
         }
+        let _ = std::process::Command::new("cmd /c cls").spawn();
         println!("{format}");
 
         let key = read_key();
