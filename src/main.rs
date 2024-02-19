@@ -1,9 +1,15 @@
 use std::io::{stdout, Write};
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, read};
-use crossterm::execute;
+use crate::inputs::KeyCode;
 use crate::settings::{Setting, SettingType};
 
+#[cfg(target_os = "windows")]
+use inputs::windows::read_key;
+
+#[cfg(all(unix))]
+use inputs::unix::read_key;
+
 mod settings;
+mod inputs;
 
 const UP: char = 'w';
 const DOWN: char = 's';
@@ -17,7 +23,8 @@ const RECOMMENDED_VRAM: usize = 6144;
 const PADDING: usize = 40;
 
 fn main() {
-    // println!("Running!");
+    println!("Running!");
+
     let args: Vec<String> = std::env::args().collect();
     let mut vram_available = RECOMMENDED_VRAM;
     if args.len() > 0 {
@@ -56,28 +63,23 @@ fn start_console(vram_available_mbs: usize) {
             append_setting_type(&mut format, &setting.setting_type);
         }
         println!("{format}");
-        let Event::Key(event) = read().unwrap() else {
-            continue;
-        };
-        if event.kind != KeyEventKind::Press {
-            continue;
-        }
 
-        match event.code {
-            KeyCode::Backspace  => {
+        let key = read_key();
+        match key {
+            KeyCode::Ascii(8)  => {
                 cycle_settings = false;
             }
-            KeyCode::Up | KeyCode::Char('w') => {
+            KeyCode::ArrowUp | KeyCode::Ascii(119) => {
                 if index > 0 {
                     index -= 1;
                 }
             }
-            KeyCode::Down | KeyCode::Char('s') => {
+            KeyCode::ArrowDown | KeyCode::Ascii(115) => {
                 if index + 1 < settings.len() {
                     index += 1;
                 }
             }
-            KeyCode::Left | KeyCode::Char('a') => {
+            KeyCode::ArrowLeft | KeyCode::Ascii(97) => {
                 let setting = &mut settings[index];
                 match &mut setting.setting_type {
                     SettingType::Level(selected_index, _, vram_levels) => {
@@ -108,7 +110,7 @@ fn start_console(vram_available_mbs: usize) {
                     }
                 }
             }
-            KeyCode::Right | KeyCode::Char('d') => {
+            KeyCode::ArrowRight | KeyCode::Ascii(100) => {
                 let setting = &mut settings[index];
                 match &mut setting.setting_type {
                     SettingType::Level(selected_index, selectable, vram_levels) => {
@@ -139,7 +141,7 @@ fn start_console(vram_available_mbs: usize) {
                     }
                 }
             }
-            KeyCode::Enter => {
+            KeyCode::Ascii(13) => {
                 cycle_settings = false;
                 break;
             },
@@ -197,4 +199,17 @@ fn settings_string_capacity(settings: &[Setting]) -> usize {
     capacity
 }
 
-
+fn key_testing() {
+    let mut looping = true;
+    while looping {
+        let key = read_key();
+        match key {
+            KeyCode::Ascii(ascii) => println!("{ascii}"),
+            KeyCode::ArrowUp => println!("ARROW U"),
+            KeyCode::ArrowDown => println!("ARROW D"),
+            KeyCode::ArrowRight => println!("ARROW R"),
+            KeyCode::ArrowLeft => println!("ARROW L"),
+            KeyCode::Other => println!("EMPTY"),
+        }
+    }
+}
