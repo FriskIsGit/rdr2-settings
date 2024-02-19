@@ -1,8 +1,7 @@
-use getch_rs::{Getch, Key};
+use crossterm::event::{Event, KeyCode, read};
 use crate::settings::{Setting, SettingType};
 
 mod settings;
-mod console;
 
 const UP: char = 'w';
 const DOWN: char = 's';
@@ -31,7 +30,6 @@ fn main() {
 fn start_console(vram_available_mbs: usize) {
     let mut settings = settings::get_settings();
     let capacity = settings_string_capacity(&settings);
-    let g = Getch::new();
     let mut index = 0;
     let mut cycle_settings = true;
 
@@ -52,93 +50,83 @@ fn start_console(vram_available_mbs: usize) {
             append_setting_type(&mut format, &setting.setting_type);
         }
         println!("{format}");
-        let Ok(key) = g.getch() else {
+        let Event::Key(event) = read().unwrap() else {
             continue;
         };
-        console::clear_screen();
-        match key {
-            // BACKSPACE IS NOT DETECTED as BACKSPACE but as DELETE
-            Key::Delete | Key::Backspace => {
+        read().unwrap(); // discard additional character
+        match event.code {
+            KeyCode::Backspace  => {
                 cycle_settings = false;
             }
-            // Arrow keys are not detected
-            Key::Char(chr) => {
-                match chr {
-                    UP => {
-                        if index > 0 {
-                            index -= 1;
+            KeyCode::Up | KeyCode::Char('w') => {
+                if index > 0 {
+                    index -= 1;
+                }
+            }
+            KeyCode::Down | KeyCode::Char('s') => {
+                if index + 1 < settings.len() {
+                    index += 1;
+                }
+            }
+            KeyCode::Left | KeyCode::Char('a') => {
+                let setting = &mut settings[index];
+                match &mut setting.setting_type {
+                    SettingType::Level(selected_index, _, vram_levels) => {
+                        if *selected_index > 0 {
+                            *selected_index -= 1;
+                            vram_used -= vram_levels[*selected_index] as f64;
                         }
                     }
-                    DOWN => {
-                        if index + 1 < settings.len() {
-                            index += 1;
+                    SettingType::OnOff(enabled) => {
+                        *enabled = !*enabled;
+                    }
+                    SettingType::Multiplier(value, _) => {
+                        if *value <= 2 {
+                            *value = 0;
+                        } else {
+                            *value /= 2;
                         }
                     }
-                    LEFT => {
-                        let setting = &mut settings[index];
-                        match &mut setting.setting_type {
-                            SettingType::Level(selected_index, _, vram_levels) => {
-                                if *selected_index > 0 {
-                                    *selected_index -= 1;
-                                    vram_used -= vram_levels[*selected_index] as f64;
-                                }
-                            }
-                            SettingType::OnOff(enabled) => {
-                                *enabled = !*enabled;
-                            }
-                            SettingType::Multiplier(value, _) => {
-                                if *value <= 2 {
-                                    *value = 0;
-                                } else {
-                                    *value /= 2;
-                                }
-                            }
-                            SettingType::OnHalfOff(value) => {
-                                // OFF ON HALF
-                                if *value == 0 {
-                                    *value = 2;
-                                } else if *value == 1 {
-                                    *value = 0;
-                                } else if *value == 2 {
-                                    *value = 1;
-                                }
-                            }
+                    SettingType::OnHalfOff(value) => {
+                        // OFF ON HALF
+                        if *value == 0 {
+                            *value = 2;
+                        } else if *value == 1 {
+                            *value = 0;
+                        } else if *value == 2 {
+                            *value = 1;
                         }
                     }
-                    RIGHT => {
-                        let setting = &mut settings[index];
-                        match &mut setting.setting_type {
-                            SettingType::Level(selected_index, selectable, vram_levels) => {
-                                if *selected_index + 1 < selectable.len() {
-                                    *selected_index += 1;
-                                    vram_used += vram_levels[*selected_index - 1] as f64;
-                                }
-                            }
-                            SettingType::OnOff(enabled) => {
-                                *enabled = !*enabled;
-                            }
-                            SettingType::Multiplier(value, max_factor) => {
-                                if *value == 0 {
-                                    *value = 2;
-                                } else if value < max_factor && *value >= 2 {
-                                    *value *= 2;
-                                }
-                            }
-                            SettingType::OnHalfOff(value) => {
-                                // OFF ON HALF
-                                if *value == 0 {
-                                    *value = 1;
-                                } else if *value == 1 {
-                                    *value = 2;
-                                } else if *value == 2 {
-                                    *value = 0;
-                                }
-                            }
+                }
+            }
+            KeyCode::Right | KeyCode::Char('d') => {
+                let setting = &mut settings[index];
+                match &mut setting.setting_type {
+                    SettingType::Level(selected_index, selectable, vram_levels) => {
+                        if *selected_index + 1 < selectable.len() {
+                            *selected_index += 1;
+                            vram_used += vram_levels[*selected_index - 1] as f64;
                         }
                     }
-                    CARRIAGE_RETURN | LINE_BREAK => {}
-                    _ => {
-                        // println!("ANOTHER CHAR: {chr}")
+                    SettingType::OnOff(enabled) => {
+                        *enabled = !*enabled;
+                    }
+                    SettingType::Multiplier(value, max_factor) => {
+                        if *value == 0 {
+                            *value = 2;
+                        } else if value < max_factor && *value >= 2 {
+                            *value *= 2;
+                        }
+                    }
+                    SettingType::OnHalfOff(value) => {
+                        // OFF ON HALF
+                        if *value == 0 {
+                            *value = 1;
+                        } else if *value == 1 {
+                            *value = 2;
+                        } else if *value == 2 {
+                            *value = 0;
+                        }
                     }
                 }
             }
