@@ -91,6 +91,14 @@ impl Setting {
             section,
         }
     }
+    pub fn resolutions(section: XMLSection, nice_name: &str) -> Self {
+        Self {
+            nice_name: "".to_string(),
+            tag: "".to_string(),
+            setting_type: SettingType::OnOff(false),
+            section,
+        }
+    }
     pub fn api_options(section: XMLSection, tag: &str, nice_name: &str) -> Self {
         let vulcan = Selectable::new("Vulcan".into(), "kSettingAPI_Vulcan".into());
         let drx12 = Selectable::new("DirectX12".into(), "kSettingAPI_DX12".into());
@@ -163,6 +171,7 @@ pub fn get_settings() -> Vec<Setting> {
         Setting::on_off(Video, "tripleBuffered", "Triple Buffering"),
         Setting::on_half_off(Video, "vSync", "VSync"),
         Setting::api_options(Video, "API", "Graphical API"),
+        // Setting::resolutions(Video, "API", "Graphical API"),
     ];
     settings
 }

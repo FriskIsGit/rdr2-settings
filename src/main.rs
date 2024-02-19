@@ -11,19 +11,13 @@ use inputs::unix::read_key;
 mod settings;
 mod inputs;
 
-const UP: char = 'w';
-const DOWN: char = 's';
-const LEFT: char = 'a';
-const RIGHT: char = 'd';
-const CARRIAGE_RETURN: char = '\r';
-const LINE_BREAK: char = '\n';
-
 const MIN_VRAM: usize = 1537;  // All minimal settings (1024 x 768)
 const RECOMMENDED_VRAM: usize = 6144;
 const PADDING: usize = 40;
 
 fn main() {
     println!("Running!");
+    // key_testing();
     let args: Vec<String> = std::env::args().collect();
     let mut vram_available = RECOMMENDED_VRAM;
     if args.len() > 0 {
@@ -61,20 +55,20 @@ fn start_console(vram_available_mbs: usize) {
 
         let key = read_key();
         match key {
-            KeyCode::Ascii(8)  => {
+            KeyCode::Backspace  => {
                 cycle_settings = false;
             }
-            KeyCode::ArrowUp | KeyCode::Ascii(119) => {
+            KeyCode::ArrowUp | KeyCode::Char('w') | KeyCode::Char('W') => {
                 if index > 0 {
                     index -= 1;
                 }
             }
-            KeyCode::ArrowDown | KeyCode::Ascii(115) => {
+            KeyCode::ArrowDown | KeyCode::Char('s') | KeyCode::Char('S') => {
                 if index + 1 < settings.len() {
                     index += 1;
                 }
             }
-            KeyCode::ArrowLeft | KeyCode::Ascii(97) => {
+            KeyCode::ArrowLeft | KeyCode::Char('a') | KeyCode::Char('A') => {
                 let setting = &mut settings[index];
                 match &mut setting.setting_type {
                     SettingType::Level(selected_index, _, vram_levels) => {
@@ -105,7 +99,7 @@ fn start_console(vram_available_mbs: usize) {
                     }
                 }
             }
-            KeyCode::ArrowRight | KeyCode::Ascii(100) => {
+            KeyCode::ArrowRight | KeyCode::Char('d') | KeyCode::Char('D') => {
                 let setting = &mut settings[index];
                 match &mut setting.setting_type {
                     SettingType::Level(selected_index, selectable, vram_levels) => {
@@ -136,7 +130,7 @@ fn start_console(vram_available_mbs: usize) {
                     }
                 }
             }
-            KeyCode::Ascii(13) => {
+            KeyCode::Enter => {
                 cycle_settings = false;
                 break;
             },
@@ -199,12 +193,15 @@ fn key_testing() {
     while looping {
         let key = read_key();
         match key {
-            KeyCode::Ascii(ascii) => println!("{ascii}"),
+            KeyCode::Char(chr) => println!("{chr}"),
+            KeyCode::Enter => println!("ENTERINGUH"),
             KeyCode::ArrowUp => println!("ARROW U"),
             KeyCode::ArrowDown => println!("ARROW D"),
             KeyCode::ArrowRight => println!("ARROW R"),
             KeyCode::ArrowLeft => println!("ARROW L"),
-            KeyCode::Other => println!("EMPTY"),
+            KeyCode::Backspace => println!("BACKSPACING"),
+            KeyCode::Other(id) => println!("{id}"),
+            _ => {}
         }
     }
 }
