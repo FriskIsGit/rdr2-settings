@@ -1,4 +1,6 @@
+use std::io::{stdout, Write};
 use crossterm::event::{Event, KeyCode, read};
+use crossterm::execute;
 use crate::settings::{Setting, SettingType};
 
 mod settings;
@@ -15,7 +17,7 @@ const RECOMMENDED_VRAM: usize = 6144;
 const PADDING: usize = 40;
 
 fn main() {
-    println!("Running!");
+    // println!("Running!");
     let args: Vec<String> = std::env::args().collect();
     let mut vram_available = RECOMMENDED_VRAM;
     if args.len() > 0 {
@@ -28,11 +30,16 @@ fn main() {
 }
 
 fn start_console(vram_available_mbs: usize) {
+    let Ok(_) = crossterm::terminal::enable_raw_mode() else {
+        eprintln!("Failed to enable raw mode");
+        return;
+    };
+
     let mut settings = settings::get_settings();
     let capacity = settings_string_capacity(&settings);
     let mut index = 0;
     let mut cycle_settings = true;
-
+    let mut inputs: Vec<char> = vec![];
     let mut vram_used = MIN_VRAM as f64;
     while cycle_settings {
         let mut format = String::with_capacity(capacity);
@@ -53,12 +60,13 @@ fn start_console(vram_available_mbs: usize) {
         let Event::Key(event) = read().unwrap() else {
             continue;
         };
-        read().unwrap(); // discard additional character
+
         match event.code {
             KeyCode::Backspace  => {
                 cycle_settings = false;
             }
             KeyCode::Up | KeyCode::Char('w') => {
+                inputs.push('w');
                 if index > 0 {
                     index -= 1;
                 }
@@ -130,9 +138,14 @@ fn start_console(vram_available_mbs: usize) {
                     }
                 }
             }
+            KeyCode::Enter => {
+                cycle_settings = false;
+                break;
+            },
             _ => {}
         }
     }
+    println!("{:?}", inputs);
 }
 
 fn append_setting_type(format: &mut String, setting_type: &SettingType) {
