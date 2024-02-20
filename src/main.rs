@@ -3,10 +3,10 @@ use crate::inputs::KeyCode;
 use crate::settings::{Setting, SettingType};
 
 #[cfg(target_os = "windows")]
-use inputs::windows::read_key;
+use crate::inputs::windows::{read_key, clear_console};
 
 #[cfg(all(unix))]
-use inputs::unix::read_key;
+use crate::inputs::unix::{read_key, clear_console};
 
 mod settings;
 mod inputs;
@@ -50,7 +50,7 @@ fn start_console(vram_available_mbs: usize) {
             pad_with_spaces(&mut format, PADDING - nice_name_length);
             append_setting_type(&mut format, &setting.setting_type);
         }
-        let _ = std::process::Command::new("cmd /c cls").spawn();
+        clear_console();
         println!("{format}");
 
         let key = read_key();
@@ -194,7 +194,7 @@ fn key_testing() {
         let key = read_key();
         match key {
             KeyCode::Char(chr) => println!("{chr}"),
-            KeyCode::Enter => println!("ENTERINGUH"),
+            KeyCode::Enter => println!("ENTER"),
             KeyCode::ArrowUp => println!("ARROW U"),
             KeyCode::ArrowDown => println!("ARROW D"),
             KeyCode::ArrowRight => println!("ARROW R"),

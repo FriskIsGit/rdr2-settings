@@ -35,6 +35,7 @@ impl Setting {
         let off = Selectable::new("Low (OFF)".into(), "kSettingLevel_Low".into()); // ??
         let medium = Selectable::new("Medium".into(), "kSettingLevel_Medium".into());
         let high = Selectable::new("High".into(), "kSettingLevel_High".into());
+
         let options = vec![off, medium, high];
         let vram = vec![step1, step2];
         Self {
@@ -171,7 +172,7 @@ pub fn get_settings() -> Vec<Setting> {
         Setting::on_off(Video, "tripleBuffered", "Triple Buffering"),
         Setting::on_half_off(Video, "vSync", "VSync"),
         Setting::api_options(Video, "API", "Graphical API"),
-        // Setting::resolutions(Video, "API", "Graphical API"),
+        // Setting::resolutions(Video, "API", "Graphical API"), not very soon
     ];
     settings
 }
