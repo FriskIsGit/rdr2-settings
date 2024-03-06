@@ -173,12 +173,16 @@ fn start_console(vram_available_mbs: usize) {
             KeyCode::Enter => {
                 println!("Committing write");
                 settings::commit_xml_write(settings);
+                println!("Settings default location:");
+                println!("{DEFAULT_SETTINGS_PATH}");
                 break;
             }
             _ => {}
         }
     }
 }
+
+const DEFAULT_SETTINGS_PATH: &str = "C:/Users/Name/Documents/Rockstar Games/Red Dead Redemption 2/Settings/system.xml";
 
 fn append_setting_type(format: &mut String, setting_type: &SettingType) {
     match setting_type {

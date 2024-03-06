@@ -289,7 +289,7 @@ pub fn commit_xml_write(settings: Vec<Setting>) {
     xml.end_element();
 
     xml.start_element("videoCardDescription");
-    xml.write_text("GPU CARD NAME");
+    xml.write_text("VIDEO CARD NAME");
     xml.end_element();
 
     let content = xml.end_document();
