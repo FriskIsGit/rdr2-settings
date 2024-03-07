@@ -69,11 +69,11 @@ impl Setting {
             section,
         }
     }
-    pub fn on_off(section: XMLSection, tag: &str, nice_name: &str) -> Self {
+    pub fn on_off(section: XMLSection, tag: &str, nice_name: &str, on_by_default: bool) -> Self {
         Self {
             nice_name: nice_name.into(),
             tag: tag.into(),
-            setting_type: OnOff(false),
+            setting_type: OnOff(on_by_default),
             section,
         }
     }
@@ -162,6 +162,11 @@ impl Selectable {
 pub fn get_settings() -> Vec<Setting> {
     // Settings maintaining in-game order
     let settings = vec![
+        Setting::screen_pixels(Video, "screenWidthWindowed", "Width Pixels", 1024, 8, true),
+        Setting::screen_pixels(Video, "screenHeightWindowed", "Height Pixels", 768, 8, false),
+        Setting::on_off(Video, "tripleBuffered", "Triple Buffering", true),
+        Setting::on_half_off(Video, "vSync", "VSync"),
+
         Setting::low_medium_high_ultra(Graphics, "textureQuality", "Texture Quality", 164, 185, 726),
         Setting::multiplier(Graphics, "anisotropicFiltering", "Anisotropic Filtering", 16),
         Setting::low_medium_high_ultra_no_step(Graphics, "lightingQuality", "Lighting Quality"),
@@ -176,20 +181,24 @@ pub fn get_settings() -> Vec<Setting> {
         Setting::low_medium_high_ultra_no_step(Graphics, "particleQuality", "Particle Quality"),
         Setting::low_medium_high_ultra_no_step(Graphics, "tessellation", "Tessellation Quality"),
         Setting::off_medium_high(Graphics, "taa", "TAA Quality", 6, 0), // Off is actually Low
-        Setting::on_off(Graphics, "fxaaEnabled", "FXAA"),
+        Setting::on_off(Graphics, "fxaaEnabled", "FXAA", false),
         Setting::multiplier(Graphics, "msaa", "MSAA", 8),
+        Setting::on_off(Graphics, "hdr", "HDR", true),
 
-        Setting::on_off(Video, "tripleBuffered", "Triple Buffering"),
-        Setting::on_half_off(Video, "vSync", "VSync"),
-        Setting::screen_pixels(Video, "screenWidthWindowed", "Width Pixels", 1024, 8, true),
-        Setting::screen_pixels(Video, "screenHeightWindowed", "Height Pixels", 768, 4, false),
         Setting::api_options(AdvancedGraphics, "API", "Graphical API"),
-        Setting::on_off(AdvancedGraphics, "motionBlur", "Motion Blur"),
-        Setting::on_off(AdvancedGraphics, "waterReflectionSSR", "Water Reflection SSR"),
+        Setting::low_medium_high_ultra(AdvancedGraphics, "treeQuality", "Tree Quality", 0, 0, 0),
+        Setting::low_medium_high_ultra(AdvancedGraphics, "decalQuality", "Decal Quality", 0, 0, 0),
+        Setting::off_medium_high(AdvancedGraphics, "furDisplayQuality", "Fur Quality", 0, 0),
+        Setting::on_off(AdvancedGraphics, "motionBlur", "Motion Blur", true),
+        Setting::on_off(AdvancedGraphics, "waterReflectionSSR", "Water Reflection SSR", true),
         Setting::low_medium_high(AdvancedGraphics, "waterRefractionQuality", "Water Refraction Quality", 2, 5),
         Setting::low_medium_high(AdvancedGraphics, "waterReflectionQuality", "Water Reflection Quality", 3, 15),
         Setting::low_medium_high_ultra(AdvancedGraphics, "particleLightingQuality", "Particle Lighting Quality", 18, 0, 0),
         Setting::off_medium_high_ultra(AdvancedGraphics, "shadowSoftShadows", "Soft Shadows", 0, 0, 0),
+        Setting::on_off(AdvancedGraphics, "treeTessellationEnabled", "Tree Tessellation", false),
+        Setting::on_off(AdvancedGraphics, "snowGlints", "Snow Glints", true),
+        Setting::on_off(AdvancedGraphics, "damageModelsDisabled", "Disable Damage Model", false),
+        Setting::low_medium_high_ultra(AdvancedGraphics, "POMQuality", "Parallax Quality", 0, 0, 0),
     ];
     settings
 }
@@ -228,35 +237,40 @@ pub fn commit_xml_write(settings: Vec<Setting>) {
 
     xml.start_element("graphics");
     write_default_graphics(&mut xml);
-    for setting in settings.iter() {
-        if setting.section != Graphics {
-            continue;
-        }
-        xml.start_element(&setting.tag);
-        match &setting.setting_type {
-            Level(index, selectables, _) => {
-                xml.set_preserve_whitespaces(true);
-                xml.write_text(&selectables[*index].config_name);
-            }
-            OnOff(on) => {
-                let boolean = if *on { "true" } else { "false" };
-                xml.write_attribute("value", boolean);
-            }
-            Multiplier(value, _) => {
-                xml.write_attribute("value", &value.to_string());
-            }
-            Slider(_, _, _) => {}
-            OnHalfOff(_) => {}
-        }
-        xml.end_element();
-        xml.set_preserve_whitespaces(false);
-    }
+    write_options_section(Graphics, &settings, &mut xml);
     xml.end_element();
 
     xml.start_element("video");
     write_default_video(&mut xml);
+    write_options_section(Video, &settings, &mut xml);
+    xml.end_element();
+
+    xml.start_element("advancedGraphics");
+    write_default_advanced_graphics(&mut xml);
+    write_options_section(AdvancedGraphics, &settings, &mut xml);
+    xml.end_element();
+
+    xml.start_element("videoCardDescription");
+    xml.set_preserve_whitespaces(true);
+    // Read existing video card name (config will be reset if video card desc doesn't match, just why)
+    if let Some(card_name) = thread_handle.join().expect("Thread panicked?") {
+        xml.write_text(&card_name);
+    } else {
+        eprintln!("Video card name wasn't fetched, change it manually");
+        xml.write_text("VIDEO_CARD_NAME");
+    }
+
+    xml.end_element();
+    xml.set_preserve_whitespaces(false);
+
+    let content = xml.end_document();
+    let mut file = File::create("system.xml").expect("Couldn't create file");
+    file.write_all(content.as_bytes()).expect("Failed to write to file");
+}
+
+fn write_options_section(section: XMLSection, settings: &Vec<Setting>, xml: &mut XmlWriter) {
     for setting in settings.iter() {
-        if setting.section != Video {
+        if setting.section != section {
             continue;
         }
         xml.start_element(&setting.tag);
@@ -276,49 +290,6 @@ pub fn commit_xml_write(settings: Vec<Setting>) {
         xml.end_element();
         xml.set_preserve_whitespaces(false);
     }
-    xml.end_element();
-
-    xml.start_element("advancedGraphics");
-    write_default_advanced_graphics(&mut xml);
-    for setting in settings.iter() {
-        if setting.section != AdvancedGraphics {
-            continue;
-        }
-        xml.start_element(&setting.tag);
-        match &setting.setting_type {
-            Level(index, selectables, _) => {
-                xml.set_preserve_whitespaces(true);
-                xml.write_text(&selectables[*index].config_name)
-            },
-            OnOff(on) => {
-                let boolean = if *on { "true" } else { "false" };
-                xml.write_attribute("value", boolean);
-            }
-            OnHalfOff(_) => {}
-            Multiplier(value, _) => {}
-            Slider(pixels, _, _) => xml.write_attribute("value", pixels),
-        }
-        xml.end_element();
-        xml.set_preserve_whitespaces(false);
-    }
-    xml.end_element();
-
-    xml.start_element("videoCardDescription");
-    xml.set_preserve_whitespaces(true);
-    // Read existing video card name (config will be reset if video card desc doesn't match, just why)
-    if let Some(card_name) = thread_handle.join().expect("Thread panicked?") {
-        xml.write_text(&card_name);
-    } else {
-        eprintln!("Video card name wasn't fetched, change it manually");
-        xml.write_text("VIDEO_CARD_NAME");
-    }
-
-    xml.end_element();
-    xml.set_preserve_whitespaces(false);
-
-    let content = xml.end_document();
-    let mut file = File::create("system.xml").expect("Couldn't create file");
-    file.write_all(content.as_bytes()).expect("Failed to write to file");
 }
 
 type VideoCard = String;
@@ -360,7 +331,6 @@ fn write_default_graphics(xml: &mut XmlWriter) {
     write_element("dlssIndex", "0", xml);
     write_element("dlssQuality", "5", xml);
     write_element("graphicsQualityPreset", "0.5", xml);
-    write_element("hdr", "true", xml);
     write_element("hdrIntensity", "100", xml);
     write_element("hdrPeakBrightness", "1000", xml);
     write_element("hdrFilmicMode", "true", xml);
@@ -369,7 +339,6 @@ fn write_default_graphics(xml: &mut XmlWriter) {
 }
 
 fn write_default_video(xml: &mut XmlWriter) {
-
     write_element("adapterIndex", "0", xml); // output adapter
     write_element("outputIndex", "0", xml); // output monitor
 
@@ -395,7 +364,6 @@ fn write_default_advanced_graphics(xml: &mut XmlWriter) {
     write_element("motionBlurLimit", "16.0", xml);
     write_element("waterSimulationQuality", "3", xml); // make selectable
     write_text_element("waterLightingQuality", "kSettingLevel_Ultra", xml); //make selectable
-    write_text_element("furDisplayQuality", "kSettingLevel_Medium", xml); // make selectable
     write_element("maxTexUpgradesPerFrame", "5", xml);
     // check
     write_text_element("shadowGrassShadows", "kSettingLevel_High", xml);
@@ -410,8 +378,6 @@ fn write_default_advanced_graphics(xml: &mut XmlWriter) {
     write_text_element("volumetricsLightingQuality", "kSettingLevel_High", xml);
     write_element("volumetricsRaymarchResolutionUnclamped", "true", xml);
     write_text_element("terrainShadowQuality", "kSettingLevel_Ultra", xml);
-    write_element("damageModelsDisabled", "false", xml); //interesting?
-    write_text_element("decalQuality", "kSettingLevel_High", xml);
     write_element("ssaoFullScreenEnabled", "false", xml);
     write_element("ssaoType", "0", xml);
     write_element("ssdoSampleCount", "4", xml);
@@ -419,8 +385,6 @@ fn write_default_advanced_graphics(xml: &mut XmlWriter) {
     write_text_element("ssdoResolution", "kSettingLevel_Low", xml);
     write_element("ssdoTAABlendEnabled", "true", xml);
     write_element("ssroSampleCount", "2", xml);
-    write_element("snowGlints", "true", xml);
-    write_text_element("POMQuality", "kSettingLevel_Ultra", xml);
     write_element("probeRelightEveryFrame", "false", xml);
     write_text_element("scalingMode", "kSettingScale_Mode1o1", xml);
     write_element("reflectionMSAA", "0", xml);
@@ -429,10 +393,7 @@ fn write_default_advanced_graphics(xml: &mut XmlWriter) {
     write_element("pedLodBias", "0", xml);
     write_element("vehicleLodBias", "0", xml);
     write_element("sharpenIntensity", "1", xml);
-    write_element("sharpenIntensity", "1", xml);
-    write_text_element("treeQuality", "kSettingLevel_Ultra", xml);
     write_text_element("deepsurfaceQuality", "kSettingLevel_High", xml);
-    write_element("treeTessellationEnabled", "false", xml);
 }
 
 fn write_element(name: &str, val: &str, xml: &mut XmlWriter) {
