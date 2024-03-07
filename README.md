@@ -3,6 +3,7 @@
 ### Usage
 - Make modifications
 - Press `Enter` to serialize settings to an `xml` file in current directory
-- Modify video card name to match yours from the existing pre-generated settings
+- Video card name will be read if `system.xml` already exists
+- Replace existing `system.xml` with the newly generated file
 
 ![UI](img/settings.png)

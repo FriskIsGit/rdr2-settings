@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io::Write;
+use std::thread;
 use xmlwriter::{Options, XmlWriter};
 use crate::settings::SettingType::{Level, Multiplier, OnHalfOff, OnOff, Slider};
 use crate::settings::XMLSection::{AdvancedGraphics, Graphics, Video};
@@ -51,7 +52,7 @@ impl Setting {
         Self {
             nice_name: nice_name.into(),
             tag: tag.into(),
-            setting_type: SettingType::Level(0, options, vram),
+            setting_type: Level(0, options, vram),
             section,
         }
     }
@@ -65,7 +66,7 @@ impl Setting {
         Self {
             nice_name: nice_name.into(),
             tag: tag.into(),
-            setting_type: SettingType::Level(0, options, vram),
+            setting_type: Level(0, options, vram),
             section,
         }
     }
@@ -73,7 +74,7 @@ impl Setting {
         Self {
             nice_name: nice_name.into(),
             tag: tag.into(),
-            setting_type: SettingType::OnOff(false),
+            setting_type: OnOff(false),
             section,
         }
     }
@@ -81,7 +82,7 @@ impl Setting {
         Self {
             nice_name: nice_name.into(),
             tag: tag.into(),
-            setting_type: SettingType::OnHalfOff(0),
+            setting_type: OnHalfOff(0),
             section,
         }
     }
@@ -98,7 +99,7 @@ impl Setting {
         Self {
             nice_name: nice_name.into(),
             tag: tag.into(),
-            setting_type: SettingType::Level(0, options, vram),
+            setting_type: Level(0, options, vram),
             section,
         }
     }
@@ -106,7 +107,7 @@ impl Setting {
         Self {
             nice_name: nice_name.into(),
             tag: tag.into(),
-            setting_type: SettingType::Slider(curr_val, jump, is_horizontal),
+            setting_type: Slider(curr_val, jump, is_horizontal),
             section,
         }
     }
@@ -118,7 +119,7 @@ impl Setting {
         Self {
             nice_name: nice_name.into(),
             tag: tag.into(),
-            setting_type: SettingType::Level(0, options, vram),
+            setting_type: Level(0, options, vram),
             section,
         }
     }
@@ -129,7 +130,7 @@ impl Setting {
         Self {
             nice_name: nice_name.into(),
             tag: tag.into(),
-            setting_type: SettingType::Multiplier(0, max_factor),
+            setting_type: Multiplier(0, max_factor),
             section,
         }
     }
@@ -142,7 +143,7 @@ impl Setting {
         Self {
             nice_name: nice_name.into(),
             tag: tag.into(),
-            setting_type: SettingType::Level(0, options, vram),
+            setting_type: Level(0, options, vram),
             section,
         }
     }
@@ -204,6 +205,9 @@ pub fn get_setting_index_by_tag(settings: &[Setting], tag: &str) -> Option<usize
 }
 
 pub fn commit_xml_write(settings: Vec<Setting>) {
+    let thread_handle = thread::spawn(move || {
+        retrieve_video_card_name()
+    });
     let opt = Options {
         use_single_quote: false, // RDR2 has double quote
         ..Options::default()
@@ -218,8 +222,10 @@ pub fn commit_xml_write(settings: Vec<Setting>) {
     xml.end_element();
 
     xml.start_element("configSource");
+    xml.set_preserve_whitespaces(true);
     xml.write_text("kSettingsConfig_Auto");
     xml.end_element();
+    xml.set_preserve_whitespaces(false);
 
     xml.start_element("graphics");
     write_default_graphics(&mut xml);
@@ -230,6 +236,7 @@ pub fn commit_xml_write(settings: Vec<Setting>) {
         xml.start_element(&setting.tag);
         match &setting.setting_type {
             Level(index, selectables, _) => {
+                xml.set_preserve_whitespaces(true);
                 xml.write_text(&selectables[*index].config_name);
             }
             OnOff(on) => {
@@ -243,6 +250,7 @@ pub fn commit_xml_write(settings: Vec<Setting>) {
             OnHalfOff(_) => {}
         }
         xml.end_element();
+        xml.set_preserve_whitespaces(false);
     }
     xml.end_element();
 
@@ -254,7 +262,10 @@ pub fn commit_xml_write(settings: Vec<Setting>) {
         }
         xml.start_element(&setting.tag);
         match &setting.setting_type {
-            Level(index, selectables, _) => xml.write_text(&selectables[*index].config_name),
+            Level(index, selectables, _) => {
+                xml.set_preserve_whitespaces(true);
+                xml.write_text(&selectables[*index].config_name)
+            },
             OnOff(on) => {
                 let boolean = if *on { "true" } else { "false" };
                 xml.write_attribute("value", boolean);
@@ -264,6 +275,7 @@ pub fn commit_xml_write(settings: Vec<Setting>) {
             Slider(pixels, _, _) => xml.write_attribute("value", pixels)
         }
         xml.end_element();
+        xml.set_preserve_whitespaces(false);
     }
     xml.end_element();
 
@@ -275,7 +287,10 @@ pub fn commit_xml_write(settings: Vec<Setting>) {
         }
         xml.start_element(&setting.tag);
         match &setting.setting_type {
-            Level(index, selectables, _) => xml.write_text(&selectables[*index].config_name),
+            Level(index, selectables, _) => {
+                xml.set_preserve_whitespaces(true);
+                xml.write_text(&selectables[*index].config_name)
+            },
             OnOff(on) => {
                 let boolean = if *on { "true" } else { "false" };
                 xml.write_attribute("value", boolean);
@@ -285,16 +300,61 @@ pub fn commit_xml_write(settings: Vec<Setting>) {
             Slider(pixels, _, _) => xml.write_attribute("value", pixels),
         }
         xml.end_element();
+        xml.set_preserve_whitespaces(false);
     }
     xml.end_element();
 
     xml.start_element("videoCardDescription");
-    xml.write_text("VIDEO CARD NAME");
+    xml.set_preserve_whitespaces(true);
+    // Read existing video card name (config will be reset if video card desc doesn't match, just why)
+    if let Some(card_name) = thread_handle.join().expect("Thread panicked?") {
+        xml.write_text(&card_name);
+    } else {
+        eprintln!("Video card name wasn't fetched, change it manually");
+        xml.write_text("VIDEO_CARD_NAME");
+    }
+
     xml.end_element();
+    xml.set_preserve_whitespaces(false);
 
     let content = xml.end_document();
     let mut file = File::create("system.xml").expect("Couldn't create file");
     file.write_all(content.as_bytes()).expect("Failed to write to file");
+}
+
+type VideoCard = String;
+fn retrieve_video_card_name() -> Option<VideoCard> {
+    let Some(mut dir) = std::env::home_dir() else {
+        return None
+    };
+    dir = dir.join("Documents")
+        .join("Rockstar Games")
+        .join("Red Dead Redemption 2")
+        .join("Settings")
+        .join("system.xml");
+    if !dir.exists() {
+        return None
+    }
+    println!("Reading video card name from system.xml at:");
+    println!("{dir:?}");
+    let Ok(content) = std::fs::read_to_string(dir) else {
+        return None
+    };
+    let Some(desc_index) = content.rfind("<videoCardDescription>") else {
+        return None
+    };
+    let name_start = desc_index + 22;
+    let bytes = content.as_bytes();
+    for i in name_start..bytes.len() {
+        if bytes[i] != b'<' {
+            continue
+        }
+        let owned_bytes = bytes[name_start..i].to_owned();
+        let card_name = String::from_utf8(owned_bytes).expect("NOT UTF8?");
+        println!("{card_name}");
+        return Some(card_name);
+    }
+    None
 }
 
 fn write_default_graphics(xml: &mut XmlWriter) {
@@ -384,6 +444,8 @@ fn write_element(name: &str, val: &str, xml: &mut XmlWriter) {
 
 fn write_text_element(name: &str, text: &str, xml: &mut XmlWriter) {
     xml.start_element(name);
+    xml.set_preserve_whitespaces(true);
     xml.write_text(text);
     xml.end_element();
+    xml.set_preserve_whitespaces(false);
 }

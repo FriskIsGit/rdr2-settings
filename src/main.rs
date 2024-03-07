@@ -16,6 +16,7 @@ mod inputs;
 const MIN_VRAM: usize = 1670;
 const RECOMMENDED_VRAM: usize = 6144;
 const PADDING: usize = 40;
+const DEFAULT_VIDEO_CARD_NAME: &str = "VIDEO CARD NAME";
 
 fn main() {
     println!("Running!");
@@ -173,8 +174,6 @@ fn start_console(vram_available_mbs: usize) {
             KeyCode::Enter => {
                 println!("Committing write");
                 settings::commit_xml_write(settings);
-                println!("Settings default location:");
-                println!("{DEFAULT_SETTINGS_PATH}");
                 break;
             }
             _ => {}
