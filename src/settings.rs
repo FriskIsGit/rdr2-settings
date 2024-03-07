@@ -15,7 +15,6 @@ type Value = usize;
 type MaxFactor = usize;
 type Enabled = bool;
 type Jump = usize;
-type IsHorizontal = bool;
 
 pub enum SettingType {
     Level(SelectedIndex, Vec<Selectable>, VRamLevels),

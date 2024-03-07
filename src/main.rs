@@ -1,4 +1,3 @@
-use std::io::{Write};
 use crate::inputs::KeyCode;
 use crate::settings::{Setting, SettingType};
 
@@ -16,20 +15,12 @@ mod inputs;
 const MIN_VRAM: usize = 1670;
 const RECOMMENDED_VRAM: usize = 6144;
 const PADDING: usize = 40;
-const DEFAULT_VIDEO_CARD_NAME: &str = "VIDEO CARD NAME";
 
 fn main() {
     println!("Running!");
     // key_testing();
-    let args: Vec<String> = std::env::args().collect();
-    let mut vram_available = RECOMMENDED_VRAM;
-    if args.len() > 0 {
-        // VRAM provided in GB
-        if let Ok(gb) = args[0].parse::<usize>() {
-            vram_available = gb * 1024;
-        }
-    }
-    start_console(vram_available);
+    // let args: Vec<String> = std::env::args().collect();
+    start_console(RECOMMENDED_VRAM);
 }
 
 fn start_console(vram_available_mbs: usize) {
@@ -235,6 +226,7 @@ fn settings_string_capacity(settings: &[Setting]) -> usize {
     capacity
 }
 
+#[allow(dead_code)]
 fn key_testing() {
     let mut looping = true;
     while looping {
