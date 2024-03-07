@@ -184,6 +184,7 @@ pub fn get_settings() -> Vec<Setting> {
         Setting::on_off(Graphics, "fxaaEnabled", "FXAA", false),
         Setting::multiplier(Graphics, "msaa", "MSAA", 8),
         Setting::on_off(Graphics, "hdr", "HDR", true),
+        Setting::on_off(Graphics, "hdrFilmicMode", "HDR Filmic Mode", true),
 
         Setting::api_options(AdvancedGraphics, "API", "Graphical API"),
         Setting::low_medium_high_ultra(AdvancedGraphics, "treeQuality", "Tree Quality", 0, 0, 0),
@@ -199,6 +200,7 @@ pub fn get_settings() -> Vec<Setting> {
         Setting::on_off(AdvancedGraphics, "snowGlints", "Snow Glints", true),
         Setting::on_off(AdvancedGraphics, "damageModelsDisabled", "Disable Damage Model", false),
         Setting::low_medium_high_ultra(AdvancedGraphics, "POMQuality", "Parallax Quality", 0, 0, 0),
+        Setting::low_medium_high(AdvancedGraphics, "deepsurfaceQuality", "Deep Surface Quality", 0, 0), // not sure
     ];
     settings
 }
@@ -333,7 +335,6 @@ fn write_default_graphics(xml: &mut XmlWriter) {
     write_element("graphicsQualityPreset", "0.5", xml);
     write_element("hdrIntensity", "100", xml);
     write_element("hdrPeakBrightness", "1000", xml);
-    write_element("hdrFilmicMode", "true", xml);
     write_element("gamma", "15", xml);
     write_element("hdrSettingsMigrated", "true", xml);
 }
@@ -393,7 +394,6 @@ fn write_default_advanced_graphics(xml: &mut XmlWriter) {
     write_element("pedLodBias", "0", xml);
     write_element("vehicleLodBias", "0", xml);
     write_element("sharpenIntensity", "1", xml);
-    write_text_element("deepsurfaceQuality", "kSettingLevel_High", xml);
 }
 
 fn write_element(name: &str, val: &str, xml: &mut XmlWriter) {
